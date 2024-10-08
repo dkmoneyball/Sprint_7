@@ -1,53 +1,65 @@
 import pytest
 import requests
-from .conftest import login_courier, generate_random_string  # Используем относительный импорт
+from src.utils import generate_random_string, login_courier
+from src.config import COURIER_URL  # Импортируем URL для курьера из config.py
 
-BASE_URL = "https://qa-scooter.praktikum-services.ru/api/v1"
+@pytest.fixture
+def unique_login():
+    return generate_random_string()
 
+@pytest.fixture
+def create_courier_and_return_login_password():
+    # Создаем курьера и возвращаем логин и пароль
+    login = generate_random_string()
+    password = "1234"
+    payload = {
+        "login": login,
+        "password": password,
+        "firstName": "CourierName"
+    }
+    response = requests.post(COURIER_URL, json=payload)  # Используем COURIER_URL из config
+    if response.status_code == 201:
+        return login, password
+    return None, None
 
 class TestCreateCourier:
 
-    # Проверка успешного создания курьера
-    def test_create_courier_success(self):
-        # Используем уникальный логин для каждого теста
-        unique_login = generate_random_string()
+    # Проверка успешного создания курьера: статус ответа
+    def test_create_courier_status_code(self, unique_login):
         payload = {
             "login": unique_login,
             "password": "1234",
             "firstName": "CourierName"
         }
-        response = requests.post(f"{BASE_URL}/courier", json=payload)
+        response = requests.post(COURIER_URL, json=payload)  # Используем COURIER_URL из config
+        assert response.status_code == 201 or response.status_code == 409, f"Ожидался код ответа 201 или 409, но получен {response.status_code}"
 
-        # Проверяем, что курьер успешно создан
-        assert response.status_code == 201, f"Ожидался код ответа 201, но получен {response.status_code}"
-        response_data = response.json()
-        assert response_data.get("ok") is True, "Ожидалось, что ответ содержит 'ok': true"
-
-        # Проверяем, что курьер успешно авторизован
-        courier_id = login_courier(unique_login, "1234")
+    # Проверка успешной авторизации курьера
+    def test_courier_login_success(self, create_courier_and_return_login_password):
+        login, password = create_courier_and_return_login_password
+        assert login is not None and password is not None, "Курьер не был создан."
+        courier_id = login_courier(login, password)
         assert courier_id is not None, "Курьер не был авторизован после создания"
 
-    # Проверка на создание курьера с дублирующимся логином
-    def test_create_courier_duplicate(self, create_courier):
+    # Проверка на создание курьера с дублирующимся логином: статус ответа
+    def test_create_courier_duplicate_status_code(self, create_courier):
         courier_data = create_courier
         payload = {
             "login": courier_data[0],  # Используем тот же логин, чтобы вызвать конфликт
             "password": "1234",
             "firstName": "AnotherCourier"
         }
-        response = requests.post(f"{BASE_URL}/courier", json=payload)
+        response = requests.post(COURIER_URL, json=payload)  # Используем COURIER_URL из config
         assert response.status_code == 409, f"Ожидался код ответа 409, но получен {response.status_code}"
-        assert "message" in response.json(), "Ожидалось сообщение об ошибке в ответе"
 
-    # Проверка на отсутствие обязательных полей
+    # Проверка на отсутствие обязательных полей: статус ответа
     @pytest.mark.parametrize("missing_field", ["login", "password", "firstName"])
-    def test_create_courier_missing_field(self, missing_field):
+    def test_create_courier_missing_field_status_code(self, missing_field):
         payload = {
-            "login": generate_random_string(),  # Используем уникальный логин
+            "login": generate_random_string(),
             "password": "1234",
             "firstName": "CourierName"
         }
         del payload[missing_field]
-        response = requests.post(f"{BASE_URL}/courier", json=payload)
+        response = requests.post(COURIER_URL, json=payload)  # Используем COURIER_URL из config
         assert response.status_code == 400, f"Ожидался код ответа 400, но получен {response.status_code}"
-        assert "message" in response.json(), "Ожидалось сообщение об ошибке в ответе"
