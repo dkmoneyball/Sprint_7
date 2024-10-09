@@ -23,8 +23,8 @@ class TestCourierLogin:
             "password": courier_data[1]
         }
         response = requests.post(COURIER_LOGIN_URL, json=payload)  # Используем COURIER_LOGIN_URL из config
-        if response.status_code == 200:
-            assert "id" in response.json(), "Ожидалось, что ответ содержит 'id'"
+        assert response.status_code == 200, f"Ожидался код ответа 200, но получен {response.status_code}"
+        assert "id" in response.json(), "Ожидалось, что ответ содержит 'id'"
 
     # Проверка на отсутствие обязательных полей - проверка статуса кода
     @pytest.mark.parametrize("missing_field", ["login", "password"])
@@ -48,8 +48,10 @@ class TestCourierLogin:
         }
         del payload[missing_field]
         response = requests.post(COURIER_LOGIN_URL, json=payload)  # Используем COURIER_LOGIN_URL из config
-        if response.status_code == 400:
-            assert "message" in response.json(), "Ожидалось сообщение об ошибке в ответе"
+        # Проверка кода ответа
+        assert response.status_code == 400, f"Ожидался код ответа 400, но получен {response.status_code}"
+        # Проверка наличия сообщения об ошибке
+        assert "message" in response.json(), "Ожидалось сообщение об ошибке в ответе"
 
     # Проверка неверного логина - проверка статуса кода
     def test_login_courier_wrong_login_status_code(self, create_courier):
@@ -69,8 +71,8 @@ class TestCourierLogin:
             "password": courier_data[1]
         }
         response = requests.post(COURIER_LOGIN_URL, json=payload)  # Используем COURIER_LOGIN_URL из config
-        if response.status_code == 404:
-            assert "message" in response.json(), "Ожидалось сообщение об ошибке в ответе"
+        assert response.status_code == 404, f"Ожидался код ответа 404, но получен {response.status_code}"
+        assert "message" in response.json(), "Ожидалось сообщение об ошибке в ответе"
 
     # Проверка неверного пароля - проверка статуса кода
     def test_login_courier_wrong_password_status_code(self, create_courier):
@@ -90,5 +92,5 @@ class TestCourierLogin:
             "password": "wrong_password"
         }
         response = requests.post(COURIER_LOGIN_URL, json=payload)  # Используем COURIER_LOGIN_URL из config
-        if response.status_code == 404:
-            assert "message" in response.json(), "Ожидалось сообщение об ошибке в ответе"
+        assert response.status_code == 404, f"Ожидался код ответа 404, но получен {response.status_code}"
+        assert "message" in response.json(), "Ожидалось сообщение об ошибке в ответе"
